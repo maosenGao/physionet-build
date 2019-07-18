@@ -414,7 +414,7 @@ class ProjectSection(models.Model):
     resource_type = models.ForeignKey('project.ProjectType',
                                     db_column='resource_type',
                                     related_name='%(class)ss',
-                                    on_delete=models.CASCADE)
+                                    on_delete=models.PROTECT)
     default_order = models.PositiveSmallIntegerField()
     required = models.BooleanField()
 
@@ -427,18 +427,19 @@ class SectionContent(models.Model):
     """
     The content for each section of a project
     """
-    project_id = models.ForeignKey('project.CoreProject',
-                                    db_column='project_id',
-                                    related_name='%(class)ss',
-                                    on_delete=models.CASCADE)
+    content_type = models.ForeignKey(ContentType, on_delete=models.PROTECT)
+    object_id = models.PositiveIntegerField()
+    project_id = GenericForeignKey('content_type', 'object_id')
+
     project_section = models.ForeignKey('project.ProjectSection',
                                     db_column='project_section',
                                     related_name='%(class)ss',
-                                    on_delete=models.CASCADE)
+                                    on_delete=models.PROTECT)
+
     content = SafeHTMLField(blank=True)
 
     class Meta:
-        unique_together = (('project_id', 'project_section'),)
+        unique_together = (('content_type', 'object_id', 'project_section'),)
 
 
 class Metadata(models.Model):
@@ -803,6 +804,7 @@ class ArchivedProject(Metadata, UnpublishedProject, SubmissionInfo):
     """
     archive_datetime = models.DateTimeField(auto_now_add=True)
     archive_reason = models.PositiveSmallIntegerField()
+    content = GenericRelation(SectionContent)
 
     # Where all the archived project files are kept
     FILE_ROOT = os.path.join(settings.MEDIA_ROOT, 'archived-projects')
@@ -843,6 +845,8 @@ class ActiveProject(Metadata, UnpublishedProject, SubmissionInfo):
         50: 'Awaiting authors to approve publication.',
         60: 'Awaiting editor to publish.',
     }
+
+    content = GenericRelation(SectionContent)
 
     def storage_used(self):
         """
@@ -997,7 +1001,7 @@ class ActiveProject(Metadata, UnpublishedProject, SubmissionInfo):
         sections = ProjectSection.objects.filter(resource_type=self.resource_type, required=True)
         for attr in sections:
             try:
-                text = unescape(strip_tags(SectionContent.objects.get(project_id=self.core_project, project_section=attr).content))
+                text = unescape(strip_tags(self.content.get(project_section=attr).content))
                 if not text or text.isspace():
                     raise
             except:
@@ -1283,6 +1287,8 @@ class PublishedProject(Metadata, SubmissionInfo):
         'RECORDS.txt':'List of WFDB format records',
         'ANNOTATORS.tsv':'List of WFDB annotation file types'
     }
+
+    content = GenericRelation(SectionContent)
 
     class Meta:
         unique_together = (('core_project', 'version'),('featured',),)
