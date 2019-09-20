@@ -674,11 +674,22 @@ def manage_published_project(request, project_slug, version):
                 except GCP.DoesNotExist:
                     bucket_name = utility.check_bucket(project.slug, project.version)
                     if not bucket_name:
-                        bucket_name = utility.create_bucket(project=project.slug,
-                            protected=is_private, version=project.version)
+                        bucket_name, group = utility.create_bucket(
+                            project=project.slug, version=project.version,
+                            title=project.title, protected=is_private)
                     GCP.objects.create(project=project, bucket_name=bucket_name,
                         managed_by=user, is_private=is_private)
-                    messages.success(request, "The GCP bucket for project {0} was \
+                    if group:
+                        granted = utility.add_email_bucket_access(project=project,
+                        email=group, group=True)
+                        DataAccess.objects.create(project=project, platform=3,
+                            location=group)
+                        if not granted:
+                            messages.success(request, "The GCP bucket for project {0} was \
+                                successfully created, but there was an error granting \
+                                read permissions to the group: {1}".format(project, group))
+                        else:
+                            messages.success(request, "The GCP bucket for project {0} was \
                         successfully created.".format(project))
                 send_files_to_gcp(project.id, verbose_name='GCP - {}'.format(project), creator=user)
         elif 'platform' in request.POST:
