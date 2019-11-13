@@ -449,12 +449,11 @@ class ContentForm(forms.ModelForm):
     class Meta:
         model = ActiveProject
         # This includes fields for all resource types.
-        fields = ('title', 'abstract', 'release_notes',)
+        fields = ('title', 'abstract',)
 
         help_texts = {
             'title': '* The title of the resource.',
             'abstract': '* A brief description of the resource and the context in which it was created.',
-            'release_notes': 'Important notes about the current release, and changes from previous versions.'
         }
 
     def __init__(self, resource_type, *args, **kwargs):
@@ -471,7 +470,7 @@ class SectionContentForm(forms.ModelForm):
         fields = ('section_content',)
 
     def __init__(self, project=None, project_section=None, *args, **kwargs):
-        # Creates a new instace of SectionContent if none is passed as argument
+        # Creates a new instance of SectionContent if none is passed as argument
         if 'instance' not in kwargs:
             kwargs['instance'] = SectionContent(project=project, project_section=project_section)
 
