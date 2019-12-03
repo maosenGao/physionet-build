@@ -12,6 +12,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.contenttypes.forms import generic_inlineformset_factory
 from django.forms import modelformset_factory, Select, Textarea
 from django.http import Http404, JsonResponse, HttpResponse
+from django.contrib.sites.shortcuts import get_current_site
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -589,7 +590,7 @@ def send_files_to_gcp(pid):
     to GCP. It only requires the Project ID.
     """
     project = PublishedProject.objects.get(id=pid)
-    exists = utility.check_bucket(project.slug, project.version)
+    exists = utility.check_bucket_exists(project.slug, project.version)
     if exists:
         utility.upload_files(project)
         project.gcp.sent_files = True
@@ -662,36 +663,7 @@ def manage_published_project(request, project_slug, version):
             if any(get_associated_tasks(project, read_only=False)):
                 messages.error(request, 'Project has tasks pending.')
             else:
-                # Bucket names cannot be capitalized letters
-                bucket_name = is_private = False
-                if project.access_policy > 0:
-                    is_private = True
-                # Check if the bucket name exists, and if not create it.
-                try:
-                    bucket_name = project.gcp.bucket_name
-                    messages.success(request, "The bucket already exists. Resending\
-                     the files for the project {0}.".format(project))
-                except GCP.DoesNotExist:
-                    bucket_name = utility.check_bucket(project.slug, project.version)
-                    if not bucket_name:
-                        bucket_name, group = utility.create_bucket(
-                            project=project.slug, version=project.version,
-                            title=project.title, protected=is_private)
-                    GCP.objects.create(project=project, bucket_name=bucket_name,
-                        managed_by=user, is_private=is_private)
-                    if group:
-                        granted = utility.add_email_bucket_access(project=project,
-                        email=group, group=True)
-                        DataAccess.objects.create(project=project, platform=3,
-                            location=group)
-                        if not granted:
-                            messages.success(request, "The GCP bucket for project {0} was \
-                                successfully created, but there was an error granting \
-                                read permissions to the group: {1}".format(project, group))
-                        else:
-                            messages.success(request, "The GCP bucket for project {0} was \
-                        successfully created.".format(project))
-                send_files_to_gcp(project.id, verbose_name='GCP - {}'.format(project), creator=user)
+                gcp_bucket_management(request, project, user)
         elif 'platform' in request.POST:
             data_access_form = forms.DataAccessForm(project=project, data=request.POST)
             if data_access_form.is_valid():
@@ -726,6 +698,47 @@ def manage_published_project(request, project_slug, version):
          'data_access_form': data_access_form, 'data_access': data_access,
          'rw_tasks': rw_tasks, 'ro_tasks': ro_tasks,
          'anonymous_url':anonymous_url, 'passphrase':passphrase})
+
+def gcp_bucket_management(request, project, user):
+    """
+    Checks if both the GCP bucket object and the actual GCP bucket exists.
+    Also, it checks if the bucket will be private or public to set the proper permissions.
+
+    Then it check creates either one as needed as well as the organizational email to handle access.
+    Finally, it ill re-send the files to GCP, the files are sent one at the time.
+    """
+    is_private = False
+    group = None
+    if project.access_policy > 0:
+        is_private = True
+        group = utility.get_bucket_email(project.slug, project.version)
+
+    bucket_name = utility.get_bucket_name(project.slug, project.version)
+    if not GCP.objects.filter(bucket_name=bucket_name):
+        if utility.check_bucket_exists(project.slug, project.version):
+            LOGGER.info("The bucket {0} already exists, skipping bucket and \
+                group creation".format(bucket_name))
+        else:
+            utility.create_bucket(project.slug, project.version, project.title, is_private)
+            messages.success(request, "The GCP bucket for project {0} was \
+                successfully created.".format(project))
+        GCP.objects.create(project=project, bucket_name=bucket_name, 
+            managed_by=user, is_private=is_private, access_group=group)
+        if group:
+            granted = utility.add_email_bucket_access(project, group, True)
+            DataAccess.objects.create(project=project, platform=3, location=group)
+            if not granted:
+                error = "The GCP bucket for project {0} was successfully created, \
+                    but there was an error granting read permissions to the \
+                    group: {1}".format(project, group)
+                messages.success(request, error)
+                raise Exception(error)
+            messages.success(request, "The access group for project {0} was \
+                successfully added.".format(project))
+    else:
+        messages.success(request, "The bucket already exists. Resending the \
+            files for the project {0}.".format(project))
+    send_files_to_gcp(project.id, verbose_name='GCP - {}'.format(project), creator=user)
 
 
 @login_required
