@@ -5,10 +5,12 @@ DEBUG = True
 SESSION_COOKIE_SECURE = False
 
 ALLOWED_HOSTS = ['*']
-
+SITE_ID = 4
 INSTALLED_APPS += [
     'debug_toolbar',
+    'django.contrib.sites'
 ]
+
 
 MIDDLEWARE += ['debug_toolbar.middleware.DebugToolbarMiddleware', ]
 
