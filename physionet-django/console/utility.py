@@ -6,7 +6,6 @@ from google.api_core.exceptions import BadRequest
 from googleapiclient.errors import HttpError
 from googleapiclient.discovery import build
 from google.cloud import storage
-from django.contrib.sites.shortcuts import get_current_site
 from django.contrib.sites.models import Site
 from django.contrib import messages
 from django.conf import settings
