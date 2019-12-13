@@ -713,7 +713,11 @@ def gcp_bucket_management(request, project, user):
         group = utility.get_bucket_email(project.slug, project.version)
 
     bucket_name = utility.get_bucket_name(project.slug, project.version)
-    if not GCP.objects.filter(bucket_name=bucket_name):
+
+    if GCP.objects.filter(bucket_name=bucket_name):
+        messages.success(request, "The bucket already exists. Resending the \
+            files for the project {0}.".format(project))
+    else:
         if utility.check_bucket_exists(project.slug, project.version):
             LOGGER.info("The bucket {0} already exists, skipping bucket and \
                 group creation".format(bucket_name))
@@ -734,9 +738,7 @@ def gcp_bucket_management(request, project, user):
                 raise Exception(error)
             messages.success(request, "The access group for project {0} was \
                 successfully added.".format(project))
-    else:
-        messages.success(request, "The bucket already exists. Resending the \
-            files for the project {0}.".format(project))
+
     send_files_to_gcp(project.id, verbose_name='GCP - {}'.format(project), creator=user)
 
 
