@@ -701,11 +701,8 @@ def manage_published_project(request, project_slug, version):
 
 def gcp_bucket_management(request, project, user):
     """
-    Checks if both the GCP bucket object and the actual GCP bucket exists.
-    Also, it checks if the bucket will be private or public to set the proper permissions.
-
-    Then it check creates either one as needed as well as the organizational email to handle access.
-    Finally, it ill re-send the files to GCP, the files are sent one at the time.
+    Create the database object and cloud bucket if they do not exist, and send
+    the files to the bucket.
     """
     is_private = True
 
