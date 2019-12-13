@@ -12,7 +12,6 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.contenttypes.forms import generic_inlineformset_factory
 from django.forms import modelformset_factory, Select, Textarea
 from django.http import Http404, JsonResponse, HttpResponse
-from django.contrib.sites.shortcuts import get_current_site
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
