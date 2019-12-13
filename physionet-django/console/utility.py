@@ -17,9 +17,10 @@ LOGGER = logging.getLogger(__name__)
 ROLES = ['roles/storage.legacyBucketReader', 'roles/storage.legacyObjectReader',
     'roles/storage.objectViewer']
 
+
 def check_bucket_exists(project, version):
     """
-    Function to check if a bucket already exists 
+    Check if a bucket exists.
     """
     storage_client = storage.Client()
     bucket_name = get_bucket_name(project, version)
@@ -30,16 +31,12 @@ def check_bucket_exists(project, version):
 
 def create_bucket(project, version, title, protected=False):
     """
-    Function to create a bucket and set its permissions.
-
-    The bucket can't be created with custom permissions.
-    Once the bucket is created, its fetched and updated.
-
-    We force bucket policy permissions
+    Create a bucket with default permissions. Once the bucket is created, it is
+    fetched and updated.
 
     There are two different types of buckets:
-     - Public which are open to the world
-     - Private which access is handled by an organizational email 
+     - Public which are open to the world.
+     - Private which access is handled by an organizational email.
     """
     storage_client = storage.Client()
     bucket_name = get_bucket_name(project, version)
@@ -60,7 +57,7 @@ def create_bucket(project, version, title, protected=False):
 
 def get_bucket_name(project, version):
     """
-    Simple way of generating the GCP bucket name
+    Generate the bucket name.
     """
     current_site = Site.objects.get_current()
     production_site = Site.objects.get(id=3)
@@ -71,7 +68,7 @@ def get_bucket_name(project, version):
 
 def get_bucket_email(project, version):
     """
-    Simple way of generating the access email for the GCP buckets
+    Generate an email for managing access to the bucket.
     """
     current_site = Site.objects.get_current()
     production_site = Site.objects.get(id=3)
@@ -82,7 +79,7 @@ def get_bucket_email(project, version):
 
 def make_bucket_public(bucket):
     """
-    Function to make a bucket public to all users 
+    Make a bucket public to all users.
     """
     policy = bucket.get_iam_policy()
     for role in ROLES:
@@ -90,9 +87,10 @@ def make_bucket_public(bucket):
     bucket.set_iam_policy(policy)
     LOGGER.info("Made bucket {} public".format(bucket.name))
 
+
 def remove_bucket_permissions(bucket):
     """
-    Function to remove all permissions from bucket but owner 
+    Remove all permissions from a bucket for everyone except the owner.
     """
     policy = bucket.get_iam_policy()
     to_remove = []
@@ -106,13 +104,14 @@ def remove_bucket_permissions(bucket):
         bucket.set_iam_policy(policy)
         LOGGER.info("Removed all read permissions from bucket {}".format(bucket.name))
 
+
 def create_access_group(bucket, project, version, title):
     """
-    Creates a service action to check if the desired organizational email has
-    already been created. If the email does not exists, it creates it and calls
-    a function to set the proper permissions.
+    Create an access group with appropriate permissions, if the group does not
+    already exist.
 
-    This functions returns False if the there was an error or change in the GCP API
+    Returns:
+        bool: False if there was an error or change to the API. True otherwise.
     """
     email = get_bucket_email(project, version)
     service = create_directory_service(settings.GCP_DELEGATION_EMAIL)
@@ -146,9 +145,10 @@ def create_access_group(bucket, project, version, title):
 
 def update_access_group(email):
     """
-    Sets the propper permissions for the organizational email that was previosly created.
+    Set permissions for an access group.
 
-    This functions returns False if the there was an error or change in the GCP API
+    Returns:
+        bool: False if there was an error or change to the API. True otherwise.
     """
     service = create_directory_service(settings.GCP_DELEGATION_EMAIL, group=True)
     update = service.groups().update(groupUniqueId=email, body={
@@ -165,9 +165,10 @@ def update_access_group(email):
 
 def add_email_bucket_access(project, email, group=False):
     """
-    Function to add access to a bucket from a email 
-    If the email is elegible to be used in GCP the set iam policy will pass
-    If not, it will return a error as a bad requet.
+    Grant access to a bucket for the specified email address.
+
+    Returns:
+        bool: True is access is successfully granted. False otherwise.
     """
     storage_client = storage.Client()
     bucket = storage_client.get_bucket(project.gcp.bucket_name)
@@ -188,12 +189,12 @@ def add_email_bucket_access(project, email, group=False):
             email))
         return False
 
+
 def upload_files(project):
     """
-    Function to send files to a bucket. Gets a list of all the 
-    files under the project root directory then it sends each file 
-    one by one. The only way to know if the zip file is created is to 
-    heck the compressed sotrage size. If the zip is created, then send it.
+    Upload files to a bucket. Gets a list of all the files under the project
+    root directory, then sends each file individually. Check storage size to 
+    confirm that the zip file was created.
     """
     file_root = project.file_root()
     subfolders_fullpath = [x[0] for x in walk(file_root)]
@@ -218,12 +219,15 @@ def upload_files(project):
 
 
 def create_directory_service(user_email, group=False):
-    """Build and returns an Admin SDK Directory service object authorized with the service accounts
-    that act on behalf of the given user.
+    """
+    Create an Admin SDK Directory Service object authorized with the service
+    accounts that act on behalf of the given user.
+
     Args:
-      user_email: The email of the user. Needs permissions to access the Admin APIs.
+        user_email: The user's email address. Needs permission to access the
+                    Admin API.
     Returns:
-      Admin SDK directory service object.
+        Admin SDK Directory Service object.
     """
     logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.ERROR)
     credentials = ServiceAccountCredentials.from_p12_keyfile(
@@ -238,9 +242,10 @@ def create_directory_service(user_email, group=False):
         return build('groupssettings', 'v1', credentials=credentials)
     return build('admin', 'directory_v1', credentials=credentials)
 
+
 def paginate(request, to_paginate, maximun):
     """
-    Function to paginate the arguments. 
+    Paginate the request.
     """
     page = request.GET.get('page', 1)
     paginator = Paginator(to_paginate, maximun)
