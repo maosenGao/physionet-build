@@ -707,10 +707,12 @@ def gcp_bucket_management(request, project, user):
     Then it check creates either one as needed as well as the organizational email to handle access.
     Finally, it ill re-send the files to GCP, the files are sent one at the time.
     """
-    is_private = False
-    group = None
-    if project.access_policy > 0:
-        is_private = True
+    is_private = True
+
+    if project.access_policy == 0:
+        is_private = False
+        group = None
+    else:
         group = utility.get_bucket_email(project.slug, project.version)
 
     bucket_name = utility.get_bucket_name(project.slug, project.version)

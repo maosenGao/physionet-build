@@ -29,10 +29,9 @@ def check_bucket_exists(project, version):
     return False
 
 
-def create_bucket(project, version, title, protected=False):
+def create_bucket(project, version, title, protected=True):
     """
-    Create a bucket with default permissions. Once the bucket is created, it is
-    fetched and updated.
+    Create a bucket with either public or private permissions.
 
     There are two different types of buckets:
      - Public which are open to the world.
@@ -46,14 +45,14 @@ def create_bucket(project, version, title, protected=False):
     bucket.patch()
     LOGGER.info("Created bucket {0} for project "
                 "{1}".format(bucket_name.lower(), project))
-    if not protected:
-        make_bucket_public(bucket)
-        LOGGER.info("Made bucket {0} public".format(bucket_name.lower()))
-    else:
+    if protected:
         remove_bucket_permissions(bucket)
         group = create_access_group(bucket, project, version, title)
         LOGGER.info("Removed permissions from bucket {0} and granted {1} "
                     "read access".format(bucket_name.lower(), group))
+    else:
+        make_bucket_public(bucket)
+        LOGGER.info("Made bucket {0} public".format(bucket_name.lower()))
 
 
 def get_bucket_name(project, version):
