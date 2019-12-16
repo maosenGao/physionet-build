@@ -271,22 +271,22 @@ def register(request):
         form = forms.RegistrationForm(request.POST)
         if form.is_valid():
             # Create the new user
-            user = form.save()
-
-            # Send an email with the activation link
-            uidb64 = force_text(urlsafe_base64_encode(force_bytes(user.pk)))
-            token = default_token_generator.make_token(user)
-            subject = "PhysioNet Account Activation"
-            context = {
-                'name': user.get_full_name(),
-                'domain': get_current_site(request),
-                'url_prefix': get_url_prefix(request),
-                'uidb64': uidb64,
-                'token': token
-            }
-            body = loader.render_to_string('user/email/register_email.html', context)
-            send_mail(subject, body, settings.DEFAULT_FROM_EMAIL,
-                [form.cleaned_data['email']], fail_silently=False)
+            user, users_created = form.save()
+            if users_created:
+                # Send an email with the activation link
+                uidb64 = force_text(urlsafe_base64_encode(force_bytes(user.pk)))
+                token = default_token_generator.make_token(user)
+                subject = "PhysioNet Account Activation"
+                context = {
+                    'name': user.get_full_name(),
+                    'domain': get_current_site(request),
+                    'url_prefix': get_url_prefix(request),
+                    'uidb64': uidb64,
+                    'token': token
+                }
+                body = loader.render_to_string('user/email/register_email.html', context)
+                send_mail(subject, body, settings.DEFAULT_FROM_EMAIL,
+                    [form.cleaned_data['email']], fail_silently=False)
 
             # Registration successful
             return render(request, 'user/register_done.html', {'email':user.email})

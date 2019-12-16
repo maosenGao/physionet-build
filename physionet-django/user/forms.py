@@ -10,6 +10,7 @@ from django.utils import timezone
 from django.utils.crypto import get_random_string
 from django.utils.translation import ugettext_lazy
 from django.db import transaction
+from django.db.models import Q
 
 from project.models import PublishedProject
 from user.models import AssociatedEmail, User, Profile, CredentialApplication, CloudInformation
@@ -251,15 +252,19 @@ class RegistrationForm(forms.ModelForm):
         user = super(RegistrationForm, self).save(commit=False)
         user.set_password(self.cleaned_data['password1'])
         user.email = user.email.lower()
+        users_exists = User.objects.filter(
+            Q(username=user.username) | Q(email=user.email))
 
-        with transaction.atomic():
-            user.save()
-            # Save additional fields in Profile model
-            profile = Profile.objects.create(user=user,
-                first_names=self.cleaned_data['first_names'],
-                last_name=self.cleaned_data['last_name'])
-        return user
-
+        if not users_exists:
+            with transaction.atomic():
+                user.save()
+                # Save additional fields in Profile model
+                profile = Profile.objects.create(user=user,
+                    first_names=self.cleaned_data['first_names'],
+                    last_name=self.cleaned_data['last_name'])
+                return user, True
+        else:
+            return users_exists.get(), False
 
 # Split the credential application forms into multiple forms
 class PersonalCAF(forms.ModelForm):
