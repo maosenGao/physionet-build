@@ -252,19 +252,27 @@ class RegistrationForm(forms.ModelForm):
         user = super(RegistrationForm, self).save(commit=False)
         user.set_password(self.cleaned_data['password1'])
         user.email = user.email.lower()
-        users_exists = User.objects.filter(
-            Q(username=user.username) | Q(email=user.email))
 
-        if not users_exists:
-            with transaction.atomic():
+        with transaction.atomic():
+            # Check if a user exists with the information in the form.
+            users_exists = User.objects.filter(
+                username=user.username,
+                email=user.email,
+                profile__first_names=self.cleaned_data['first_names'],
+                profile__last_name=self.cleaned_data['last_name'])
+            # Check if the email has been used.
+            email = AssociatedEmail.objects.filter(email=user.email)
+            if not users_exists and not email:
                 user.save()
                 # Save additional fields in Profile model
                 profile = Profile.objects.create(user=user,
                     first_names=self.cleaned_data['first_names'],
                     last_name=self.cleaned_data['last_name'])
                 return user, True
-        else:
-            return users_exists.get(), False
+            elif users_exists:
+                return users_exists.get(), False
+            else:
+                raise
 
 # Split the credential application forms into multiple forms
 class PersonalCAF(forms.ModelForm):
