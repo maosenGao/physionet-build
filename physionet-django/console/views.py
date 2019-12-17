@@ -713,10 +713,11 @@ def gcp_bucket_management(request, project, user):
 
     bucket_name = utility.get_bucket_name(project.slug, project.version)
 
-    if GCP.objects.filter(bucket_name=bucket_name):
+    try:
+        gcp_object = GCP.objects.get(bucket_name=bucket_name)
         messages.success(request, "The bucket already exists. Resending the \
             files for the project {0}.".format(project))
-    else:
+    except GCP.DoesNotExist:
         if utility.check_bucket_exists(project.slug, project.version):
             LOGGER.info("The bucket {0} already exists, skipping bucket and \
                 group creation".format(bucket_name))
