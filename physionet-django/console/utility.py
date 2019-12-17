@@ -63,8 +63,8 @@ def get_bucket_name(project, version):
     production_site = Site.objects.get(id=3)
 
     if current_site.domain != production_site.domain:
-        return 'testing-delete.{0}-{1}.{2}'.format(project, version,
-                                                   production_site.domain)
+        return '{0}.{1}-{2}.{3}'.format(settings.GCP_BUCKET_PREFIX, project,
+                                        version, production_site.domain)
     return '{0}-{1}.{2}'.format(project, version, production_site.domain)
 
 
@@ -76,8 +76,8 @@ def get_bucket_email(project, version):
     production_site = Site.objects.get(id=3)
 
     if current_site.domain != production_site.domain:
-        return 'testing-delete-{0}-{1}@{2}'.format(project, version,
-                                                   production_site.domain)
+        return '{0}-{1}-{2}@{3}'.format(settings.GCP_BUCKET_PREFIX,
+                                        project, version, production_site.domain)
     return '{0}-{1}@{2}'.format(project, version, production_site.domain)
 
 
